@@ -10,13 +10,13 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace wjs_c08_react_api.Controllers
 {
     [ApiController, Route("[controller]/countries")]
-    public class CountryController : ControllerBase
+    public class ApiController : ControllerBase
     {
-        private readonly ILogger<CountryController> _logger;
+        private readonly ILogger<ApiController> _logger;
         
         private DataContext _dataContext;
 
-        public CountryController(ILogger<CountryController> logger, DataContext db)
+        public ApiController(ILogger<ApiController> logger, DataContext db)
         {
             _logger = logger;
             _dataContext = db;

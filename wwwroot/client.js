@@ -1,5 +1,5 @@
 ﻿window.addEventListener('load', (event) => {
-    getData("/Country/countries");
+    getData("/Api/countries");
 });
 
 // get initial data from db using AJAX
