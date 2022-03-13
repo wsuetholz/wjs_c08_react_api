@@ -6,6 +6,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using wjs_c08_react_api.Models;
 using Swashbuckle.AspNetCore.Annotations;
+using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.SignalR;
+using wjs_c08_react_api.Hubs;
 
 namespace wjs_c08_react_api.Controllers
 {
@@ -16,10 +19,12 @@ namespace wjs_c08_react_api.Controllers
         
         private DataContext _dataContext;
 
-        public ApiController(ILogger<ApiController> logger, DataContext db)
+        private readonly IHubContext<MedalsHub> _hubContext;
+        public ApiController(ILogger<ApiController> logger, DataContext db, IHubContext<MedalsHub> hubContext)
         {
             _logger = logger;
             _dataContext = db;
+            _hubContext = hubContext;
         }
 
         [HttpGet, SwaggerOperation(summary: "Return All Countries", null)]
@@ -36,27 +41,46 @@ namespace wjs_c08_react_api.Controllers
 
         }
 
-        [HttpPost, SwaggerOperation(summary: "Add Country to List", null), ProducesResponseType(typeof(CountryMedals), 201), SwaggerResponse(201, "Created")]
-        public CountryMedals Post([FromBody] CountryMedals countryMedals) => _dataContext.AddCountry(new CountryMedals
+        [HttpPost, SwaggerOperation(summary: "Add Country to List", null),
+         ProducesResponseType(typeof(CountryMedals), 201), SwaggerResponse(201, "Created")]
+        public async Task<ActionResult<CountryMedals>> Post([FromBody] CountryMedals countryMedals)
         {
-            Id = countryMedals.Id,
-            Name = countryMedals.Name,
-            Flag = countryMedals.Flag,
-            Bronze = countryMedals.Bronze,
-            Gold = countryMedals.Gold,
-            Silver = countryMedals.Silver
-        });
+
+            _dataContext.Add(countryMedals);
+            await _dataContext.SaveChangesAsync();
+            await _hubContext.Clients.All.SendAsync("ReceiveAddMessage", countryMedals);
+            this.HttpContext.Response.StatusCode = 201;
+
+            return countryMedals;
+        }
 
         [HttpDelete("{id}"), SwaggerOperation(summary: "Remove Country from List", null), ProducesResponseType(typeof(CountryMedals), 204), SwaggerResponse(204, "No Content")]
-        public ActionResult Delete(string id)
+        public async Task<ActionResult> Delete(string id)
         {
-            CountryMedals country = _dataContext.Countrys.Find(id);
-            if(country == null)
+            CountryMedals countryMedals = await _dataContext.Countrys.FindAsync(id);
+            if(countryMedals == null)
             {
                 return NotFound();
             }
 
-            _dataContext.DeleteCountry(id);
+            _dataContext.Remove(countryMedals);
+            await _dataContext.SaveChangesAsync();
+            await _hubContext.Clients.All.SendAsync("ReceiveDeleteMessage", id);
+            return NoContent();
+        }
+
+        [HttpPatch("{id}"), SwaggerOperation(summary: "update member from collection", null), ProducesResponseType(typeof(CountryMedals), 204), SwaggerResponse(204, "No Content")]
+        // update country (specific fields)
+        public async Task<ActionResult> Patch(int id, [FromBody] JsonPatchDocument<CountryMedals> patch)
+        {
+            CountryMedals countryMedals = await _dataContext.Countrys.FindAsync(id);
+            if (countryMedals == null)
+            {
+                return NotFound();
+            }
+            patch.ApplyTo(countryMedals);
+            await _dataContext.SaveChangesAsync();
+            await _hubContext.Clients.All.SendAsync("ReceivePatchMessage", countryMedals);
             return NoContent();
         }
     }

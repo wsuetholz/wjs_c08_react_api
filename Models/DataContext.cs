@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.JsonPatch;
 
 namespace wjs_c08_react_api.Models
 {
@@ -25,5 +26,12 @@ namespace wjs_c08_react_api.Models
             this.Remove(this.Countrys.FirstOrDefault(c => c.Id.Equals(id)));
             this.SaveChanges();
         }
+        public void PatchCountry(int id, JsonPatchDocument<CountryMedals> patch)
+        {
+            CountryMedals country = this.Countrys.FirstOrDefault(c => c.Id.Equals(id));
+            patch.ApplyTo(country);
+            this.SaveChanges();
+        }
+
     }
 }
